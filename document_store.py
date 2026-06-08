@@ -7,7 +7,7 @@ import numpy as np
 
 
 class DocumentStore:
-    """Ingests documents, chunks and embeds them, and runs similarity search."""
+    """Ingests, chunks, and embeds documents, then searches them."""
 
     def __init__(self, llm_client, chunk_size=150, chunk_overlap=30):
         self.llm_client = llm_client
@@ -39,14 +39,21 @@ class DocumentStore:
         return len(chunks)
 
     def load_corpus(self, folder):
-        """Load every .txt and .md file in a folder. Returns name -> count."""
+        """Load every .txt, .md, and .pdf file in a folder."""
         loaded = {}
         if not os.path.isdir(folder):
             return loaded
         for name in sorted(os.listdir(folder)):
+            path = os.path.join(folder, name)
             if name.endswith((".txt", ".md")):
-                with open(os.path.join(folder, name), encoding="utf-8") as f:
-                    loaded[name] = self.add_document(name, f.read())
+                with open(path, encoding="utf-8") as file:
+                    text = file.read()
+            elif name.endswith(".pdf"):
+                with open(path, "rb") as file:
+                    text = read_pdf(file)
+            else:
+                continue
+            loaded[name] = self.add_document(name, text)
         return loaded
 
     def loaded_sources(self):
@@ -70,4 +77,16 @@ class DocumentStore:
         )
         scores = rows @ q
         top = np.argsort(scores)[::-1][:k]
-        return [(self.sources[i], self.chunks[i], float(scores[i])) for i in top]
+        return [
+            (self.sources[i], self.chunks[i], float(scores[i]))
+            for i in top
+        ]
+
+
+def read_pdf(file):
+    """Extract text from a PDF given a path or a file-like object."""
+    from pypdf import PdfReader
+    text = ""
+    for page in PdfReader(file).pages:
+        text += (page.extract_text() or "") + " "
+    return text
