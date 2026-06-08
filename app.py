@@ -50,7 +50,7 @@ def documents(pipeline, user):
         st.warning("No documents loaded.")
 
     st.subheader("Upload documents")
-    tag = st.text_input("Topic tag for uploads", value="general")
+    tag = st.text_input("Topic tag for uploads", value="General")
     uploaded = st.file_uploader(
         "Add .txt, .md, or .pdf files",
         type=["txt", "md", "pdf"],
