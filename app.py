@@ -103,7 +103,7 @@ def main():
     st.set_page_config(page_title="ODS-C Study Assistant")
     pipeline = get_pipeline()
 
-    user = st.sidebar.text_input("User", value="guest")
+    user = st.sidebar.text_input("User", value="Guest")
     page = st.sidebar.radio("Navigate", ["Home", "Documents", "Chat"])
     st.sidebar.metric("Questions asked", pipeline.query_count)
 
