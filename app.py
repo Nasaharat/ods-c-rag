@@ -32,21 +32,25 @@ def home():
         "people studying for the Oncology Data Specialist (ODS-C) exam."
     )
     st.write(
-        "Use the **Documents** page to see or add reference files, and the "
-        "**Chat** page to ask questions like "
-        "*\"What does the behavior code describe?\"*"
+        "Set a user name in the sidebar, then use the **Documents** page to "
+        "add your own files and the **Chat** page to ask questions."
     )
 
 
-def documents(pipeline):
+def documents(pipeline, user):
     st.title("Documents")
-    sources = pipeline.document_store.loaded_sources()
-    if sources:
-        for name, count in sources.items():
-            st.write(f"- {name} ({count} chunks)")
+    info = pipeline.document_store.documents_info()
+    if info:
+        for name, meta in info.items():
+            st.write(
+                f"- {name} - tag: {meta['tag']}, owner: {meta['owner']} "
+                f"({meta['chunks']} chunks)"
+            )
     else:
         st.warning("No documents loaded.")
 
+    st.subheader("Upload documents")
+    tag = st.text_input("Topic tag for uploads", value="general")
     uploaded = st.file_uploader(
         "Add .txt, .md, or .pdf files",
         type=["txt", "md", "pdf"],
@@ -58,26 +62,32 @@ def documents(pipeline):
                 text = read_pdf(file)
             else:
                 text = file.read().decode("utf-8", errors="ignore")
-            count = pipeline.document_store.add_document(file.name, text)
+            count = pipeline.document_store.add_document(
+                file.name, text, user, tag or "general"
+            )
             st.success(f"Added {file.name} ({count} chunks).")
         except Exception as error:
             st.error(f"Could not load {file.name}: {error}")
 
 
-def chat(pipeline):
+def chat(pipeline, user):
     st.title("Ask a Question")
     if pipeline.document_store.is_empty():
         st.warning("Load or upload documents first.")
         return
+
+    tags = ["All"] + pipeline.document_store.available_tags()
+    tag = st.selectbox("Filter by topic", tags)
     question = st.text_input("Your question")
     if st.button("Ask") and question:
         with st.spinner("Searching..."):
             try:
-                answer, refs, elapsed = pipeline.answer(question)
+                answer, refs, elapsed = pipeline.answer(question, user, tag)
             except RuntimeError as error:
                 st.error(str(error))
                 return
         st.session_state.history.append((question, answer, refs, elapsed))
+
     for question, answer, refs, elapsed in reversed(st.session_state.history):
         st.markdown(f"**Q: {question}**")
         st.write(answer)
@@ -92,14 +102,17 @@ def chat(pipeline):
 def main():
     st.set_page_config(page_title="ODS-C Study Assistant")
     pipeline = get_pipeline()
+
+    user = st.sidebar.text_input("User", value="guest")
     page = st.sidebar.radio("Navigate", ["Home", "Documents", "Chat"])
     st.sidebar.metric("Questions asked", pipeline.query_count)
+
     if page == "Home":
         home()
     elif page == "Documents":
-        documents(pipeline)
+        documents(pipeline, user)
     else:
-        chat(pipeline)
+        chat(pipeline, user)
 
 
 if __name__ == "__main__":
