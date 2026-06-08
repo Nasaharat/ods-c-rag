@@ -4,7 +4,7 @@ A retrieval-augmented (RAG) study companion for the Oncology Data Specialist
 (ODS-C) exam. Ask a question and get an answer grounded in the loaded cancer
 registry documents, with the source passages shown.
 
-**Live demo:** _add your deployed URL here_
+Live demo: https://ods-c-rag-8txzhndvfsr77tun8gcunq.streamlit.app/
 
 ## How it works
 
