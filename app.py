@@ -3,7 +3,7 @@
 import streamlit as st
 
 from llm_client import LLMClient
-from document_store import DocumentStore
+from document_store import DocumentStore, read_pdf
 from rag_pipeline import RAGPipeline
 
 CORPUS_FOLDER = "corpus"
@@ -28,8 +28,8 @@ def home():
     st.title("ODS-C Study Assistant")
     st.write(
         "Ask questions about cancer registry abstracting and get answers "
-        "grounded in the loaded reference documents, with sources shown. Built "
-        "for people studying for the Oncology Data Specialist (ODS-C) exam."
+        "grounded in the loaded documents, with sources shown. Built for "
+        "people studying for the Oncology Data Specialist (ODS-C) exam."
     )
     st.write(
         "Use the **Documents** page to see or add reference files, and the "
@@ -46,11 +46,18 @@ def documents(pipeline):
             st.write(f"- {name} ({count} chunks)")
     else:
         st.warning("No documents loaded.")
-    uploaded = st.file_uploader("Add .txt or .md files", type=["txt", "md"],
-                                accept_multiple_files=True)
+
+    uploaded = st.file_uploader(
+        "Add .txt, .md, or .pdf files",
+        type=["txt", "md", "pdf"],
+        accept_multiple_files=True,
+    )
     for file in uploaded or []:
         try:
-            text = file.read().decode("utf-8", errors="ignore")
+            if file.name.endswith(".pdf"):
+                text = read_pdf(file)
+            else:
+                text = file.read().decode("utf-8", errors="ignore")
             count = pipeline.document_store.add_document(file.name, text)
             st.success(f"Added {file.name} ({count} chunks).")
         except Exception as error:
