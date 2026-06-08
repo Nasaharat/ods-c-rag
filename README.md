@@ -4,21 +4,33 @@ A retrieval-augmented (RAG) study companion for the Oncology Data Specialist
 (ODS-C) exam. Ask a question and get an answer grounded in the loaded cancer
 registry documents, with the source passages shown.
 
-Live demo: https://ods-c-rag-8txzhndvfsr77tun8gcunq.streamlit.app/
+**Live demo:** https://ods-c-rag-8txzhndvfsr77tun8gcunq.streamlit.app/
 
 ## How it works
 
-1. Documents are cleaned and split into overlapping chunks.
+1. Documents (.txt, .md, .pdf) are cleaned and split into overlapping chunks.
 2. Each chunk is embedded with the OpenAI embeddings API (stored in memory).
 3. A question is embedded and matched to chunks by cosine similarity.
 4. The top chunks become context for a grounded chat-model prompt.
+
+## Features
+
+- Three-page UI: Home, Documents, and Chat.
+- Grounded answers that cite the source chunks (with similarity scores).
+- PDF, text, and markdown ingestion.
+- Per-user document sets: set a user name, and your uploads stay yours while
+  everyone shares the starter corpus.
+- Topic tags with a retrieval filter, so you can narrow questions to a subject.
+- Guardrails: prompt-injection questions are refused, and sensitive data
+  (SSNs, emails, phone numbers) is redacted from retrieved text.
+- Simple analytics: a question counter and per-answer response time.
 
 ## Structure
 
 ```
 app.py             Streamlit UI (Home, Documents, Chat)
-rag_pipeline.py    RAGPipeline: retrieval + prompt + LLM call
-document_store.py  DocumentStore: chunking, embeddings, search
+rag_pipeline.py    RAGPipeline: retrieval, prompt, guardrails, LLM call
+document_store.py  DocumentStore: chunking, embeddings, metadata, search
 llm_client.py      LLMClient: OpenAI wrapper
 corpus/            starter documents loaded on launch
 ```
@@ -40,4 +52,5 @@ streamlit run app.py
 
 ## Adding documents
 
-Put `.txt` or `.md` files in `corpus/`, or upload them on the Documents page.
+Put `.txt`, `.md`, or `.pdf` files in `corpus/` to load on launch, or upload
+them on the Documents page during a session.
