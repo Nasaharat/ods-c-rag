@@ -26,7 +26,7 @@ class DocumentStore:
         return [" ".join(words[i:i + self.chunk_size])
                 for i in range(0, len(words), step)]
 
-    def add_document(self, name, text, owner="shared", tag="general"):
+    def add_document(self, name, text, owner="shared", tag="General"):
         """Chunk, embed, and store a document with owner and tag metadata."""
         chunks = self._chunk(text)
         if not chunks:
