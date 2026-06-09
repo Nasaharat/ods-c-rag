@@ -96,8 +96,10 @@ def chat(pipeline, user):
     history = st.session_state.history.setdefault(user, [])
     tags = ["All"] + pipeline.document_store.available_tags()
     tag = st.selectbox("Filter by topic", tags)
-    question = st.text_input("Your question")
-    if st.button("Ask") and question:
+    with st.form("ask_form", clear_on_submit=True):
+        question = st.text_input("Your question")
+        submitted = st.form_submit_button("Ask")
+    if submitted and question:
         with st.spinner("Searching..."):
             try:
                 answer, refs, elapsed = pipeline.answer(question, user, tag)
