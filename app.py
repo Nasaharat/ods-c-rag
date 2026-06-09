@@ -1,5 +1,7 @@
 """Streamlit UI for the ODS-C study assistant."""
 
+import os
+
 import streamlit as st
 
 from llm_client import LLMClient
@@ -7,6 +9,7 @@ from document_store import DocumentStore, read_pdf
 from rag_pipeline import RAGPipeline
 
 CORPUS_FOLDER = "corpus"
+INDEX_FILE = "corpus_index.npz"
 
 
 def get_pipeline():
@@ -18,9 +21,12 @@ def get_pipeline():
             st.error(str(error))
             st.stop()
         store = DocumentStore(llm)
-        store.load_corpus(CORPUS_FOLDER)
+        if os.path.exists(INDEX_FILE):
+            store.load_index(INDEX_FILE)
+        else:
+            store.load_corpus(CORPUS_FOLDER)
         st.session_state.pipeline = RAGPipeline(store, llm)
-        st.session_state.history = []
+        st.session_state.history = {}
     return st.session_state.pipeline
 
 
@@ -39,18 +45,29 @@ def home():
 
 def documents(pipeline, user):
     st.title("Documents")
+    st.caption(f"Signed in as: {user}")
     info = pipeline.document_store.documents_info()
-    if info:
-        for name, meta in info.items():
-            st.write(
-                f"- {name} - tag: {meta['tag']}, owner: {meta['owner']} "
-                f"({meta['chunks']} chunks)"
-            )
+    shared = {n: m for n, m in info.items() if m["owner"] == "shared"}
+    yours = {n: m for n, m in info.items() if m["owner"] == user}
+
+    st.subheader("Shared documents")
+    if shared:
+        for name, meta in shared.items():
+            st.write(f"- {name} - tag: {meta['tag']} "
+                     f"({meta['chunks']} chunks)")
     else:
-        st.warning("No documents loaded.")
+        st.caption("None loaded.")
+
+    st.subheader("Your uploads")
+    if yours:
+        for name, meta in yours.items():
+            st.write(f"- {name} - tag: {meta['tag']} "
+                     f"({meta['chunks']} chunks)")
+    else:
+        st.caption("You have not uploaded anything yet.")
 
     st.subheader("Upload documents")
-    tag = st.text_input("Topic tag for uploads", value="General")
+    tag = st.text_input("Topic tag for uploads", value="general")
     uploaded = st.file_uploader(
         "Add .txt, .md, or .pdf files",
         type=["txt", "md", "pdf"],
@@ -76,6 +93,7 @@ def chat(pipeline, user):
         st.warning("Load or upload documents first.")
         return
 
+    history = st.session_state.history.setdefault(user, [])
     tags = ["All"] + pipeline.document_store.available_tags()
     tag = st.selectbox("Filter by topic", tags)
     question = st.text_input("Your question")
@@ -86,9 +104,9 @@ def chat(pipeline, user):
             except RuntimeError as error:
                 st.error(str(error))
                 return
-        st.session_state.history.append((question, answer, refs, elapsed))
+        history.append((question, answer, refs, elapsed))
 
-    for question, answer, refs, elapsed in reversed(st.session_state.history):
+    for question, answer, refs, elapsed in reversed(history):
         st.markdown(f"**Q: {question}**")
         st.write(answer)
         with st.expander("References"):
@@ -103,9 +121,10 @@ def main():
     st.set_page_config(page_title="ODS-C Study Assistant")
     pipeline = get_pipeline()
 
-    user = st.sidebar.text_input("User", value="Guest")
+    user = st.sidebar.text_input("User", value="guest")
     page = st.sidebar.radio("Navigate", ["Home", "Documents", "Chat"])
-    st.sidebar.metric("Questions asked", pipeline.query_count)
+    asked = len(st.session_state.history.get(user, []))
+    st.sidebar.metric("Your questions", asked)
 
     if page == "Home":
         home()
